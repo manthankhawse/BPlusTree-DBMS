@@ -317,58 +317,6 @@ void update(BPlusNode* root, int id, char* name, char* username, char* email, in
     }
 }
 
-void save_node(FILE* file, BPlusNode* node) {
-    fwrite(&node->is_leaf, sizeof(int), 1, file);
-    fwrite(&node->num_keys, sizeof(int), 1, file);
-    for (int i = 0; i < node->num_keys; i++) {
-        fwrite(node->keys[i], sizeof(User), 1, file);  // Save user data
-    }
-    if (!node->is_leaf) {
-        for (int i = 0; i <= node->num_keys; i++) {
-            save_node(file, node->children[i]);
-        }
-    }
-}
-
-void save_tree(BPlusNode* root, const char* filename) {
-    FILE* file = fopen(filename, "wb");
-    if (file == NULL) {
-        printf("Error opening file for saving.\n");
-        return;
-    }
-    save_node(file, root);
-    fclose(file);
-    printf("Tree saved to %s\n", filename);
-}
-
-BPlusNode* load_node(FILE* file) {
-    BPlusNode* node = (BPlusNode*)malloc(sizeof(BPlusNode));
-    fread(&node->is_leaf, sizeof(int), 1, file);
-    fread(&node->num_keys, sizeof(int), 1, file);
-    for (int i = 0; i < node->num_keys; i++) {
-        node->keys[i] = (User*)malloc(sizeof(User));
-        fread(node->keys[i], sizeof(User), 1, file);
-    }
-    if (!node->is_leaf) {
-        for (int i = 0; i <= node->num_keys; i++) {
-            node->children[i] = load_node(file);
-        }
-    }
-    return node;
-}
-
-BPlusNode* load_tree(const char* filename) {
-    FILE* file = fopen(filename, "rb");
-    if (file == NULL) {
-        printf("Error opening file for loading.\n");
-        return NULL;
-    }
-    BPlusNode* root = load_node(file);
-    fclose(file);
-    printf("Tree loaded from %s\n", filename);
-    return root;
-}
-
 void menu() {
     printf("\n--- B+ Tree Operations Menu ---\n");
     printf("1. Insert User\n");
@@ -376,7 +324,6 @@ void menu() {
     printf("3. Delete User\n");
     printf("4. Update User\n");
     printf("5. Traverse Users\n");
-    printf("6. Print Tree Structure\n");
     printf("0. Exit\n");
     printf("Choose an option: ");
 }
@@ -443,10 +390,6 @@ int main() {
             case 5: // Traverse Users
                 traverse(root);
                 break;
-
-            // case 6: // Print Tree Structure
-            //     print_tree(root, 0);
-            //     break;
 
             case 0: // Exit
                 printf("Exiting...\n");
