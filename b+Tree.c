@@ -355,50 +355,103 @@ void deleteUserDataHelper(Node* node, int key) {
     }
 }
 
-int main() {
-    BTree* btree = createBTree(MIN_DEGREE);
 
-    insert(btree, createUser(1, "alice", "password1"));
-    insert(btree, createUser(3, "bob", "password2"));
-    insert(btree, createUser(7, "charlie", "password3"));
-    insert(btree, createUser(10, "david", "password4"));
-    insert(btree, createUser(5, "eve", "password5"));
+// Function to write the tree data to a file (recursive)
+void writeTreeToFile(Node* node, FILE* file) {
+    if (node == NULL) return;
 
-    printf("B+ Tree contents before deletion:\n");
-    display(btree->root);
-    int idToDelete = 3;
-    UserData result;
-    if (search(btree->root, idToDelete, &result)) {
-        printf("\n\nUser found - ID: %d, Username: %s, Password: %s\n", result.id, result.username, result.password);
-    } else {
-        printf("\n\nUser with ID %d not found.\n", idToDelete);
+    // Write number of keys and whether the node is a leaf
+    fwrite(&node->n, sizeof(int), 1, file);
+    fwrite(&node->leaf, sizeof(bool), 1, file);
+
+    // Write the user data records
+    for (int i = 0; i < node->n; i++) {
+        fwrite(&node->records[i], sizeof(UserData), 1, file);
     }
 
+    // Write child nodes recursively
+    if (!node->leaf) {
+        for (int i = 0; i <= node->n; i++) {
+            writeTreeToFile(node->children[i], file);
+        }
+    }
+}
+
+// Function to read the tree data from a file (recursive)
+Node* readTreeFromFile(FILE* file, int t) {
+    int n;
+    bool leaf;
     
-    deleteUserData(btree, idToDelete);
-    printf("\nDeleted user with ID: %d\n", idToDelete);
+    // Read number of keys and whether it's a leaf node
+    if (fread(&n, sizeof(int), 1, file) != 1) return NULL;
+    if (fread(&leaf, sizeof(bool), 1, file) != 1) return NULL;
 
-    printf("B+ Tree contents after deletion:\n");
-    display(btree->root);
-
-    if (search(btree->root, idToDelete, &result)) {
-        printf("\n\nUser found - ID: %d, Username: %s, Password: %s\n", result.id, result.username, result.password);
-    } else {
-        printf("\n\nUser with ID %d not found.\n", idToDelete);
+    Node* node = createNode(t, leaf);
+    node->n = n;
+    
+    // Read user data records
+    for (int i = 0; i < n; i++) {
+        fread(&node->records[i], sizeof(UserData), 1, file);
     }
 
-    printf("Table before update\n");
+    // Read child nodes recursively
+    if (!leaf) {
+        for (int i = 0; i <= n; i++) {
+            node->children[i] = readTreeFromFile(file, t);
+        }
+    }
+
+    return node;
+}
+
+// Save the BTree to file when closing
+void saveBTreeToFile(BTree* btree, const char* filename) {
+    FILE* file = fopen(filename, "wb");
+    if (file != NULL) {
+        writeTreeToFile(btree->root, file);
+        fclose(file);
+    } else {
+        printf("Error opening file for writing.\n");
+    }
+}
+
+// Load the BTree from file at the start
+BTree* loadBTreeFromFile(const char* filename, int t) {
+    FILE* file = fopen(filename, "rb");
+    if (file != NULL) {
+        BTree* btree = createBTree(t);
+        btree->root = readTreeFromFile(file, t);
+        fclose(file);
+        return btree;
+    } else {
+        printf("Error opening file for reading or file not found. Creating a new tree.\n");
+        return createBTree(t);
+    }
+}
+
+
+int main() {
+    const char* filename = "btree_data.dat";
+    
+    // Load the tree from the file (or create a new one if the file doesn't exist)
+    BTree* btree = loadBTreeFromFile(filename, MIN_DEGREE);
+    printf("Tree Loaded from file\n");
+    if(btree==NULL){
+        btree = (BTree*)malloc(sizeof(BTree));
+    }else{
+        display(btree->root);
+    }
+
+    char* newUsername = "newUsername";
+    char* newPassword = "newPassword";
+    UserData result;
+    bool userFound = search(btree->root, 51, &result);
+    printf("%d %s %s", result.id, result.username, result.password);
+
+    printf("B+ Tree contents:\n");
     display(btree->root);
 
-    int idToUpdate = 7;
-    char* username = "newUsername";
-    char* password = "newPassword";
-
-    update(btree->root, idToUpdate, &result, username, password);
-    printf("Table after update\n");
-    display(btree->root);
-
-
-
+    saveBTreeToFile(btree, filename);
+    
     return 0;
 }
