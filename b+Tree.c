@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
+#include <stdbool.h>
 #define MIN_DEGREE 3 
 
 typedef struct UserData {
@@ -84,6 +84,24 @@ bool search(Node* node, int id, UserData* result)
         return false;
     }
     return search(node->children[i], id, result);
+}
+
+bool update(Node* node, int id, UserData* result, char* username, char* password)
+{
+    int i = 0;
+    while (i < node->n && id > node->records[i].id) {
+        i++;
+    }
+    if (i < node->n && id == node->records[i].id) {
+        strcpy(node->records[i].username, username);
+        strcpy(node->records[i].password, password);
+        if (result != NULL) *result = node->records[i];
+        return true;
+    }
+    if (node->leaf) {
+        return false;
+    }
+    return update(node->children[i], id, result, username, password);
 }
 
 void splitChild(Node* parent, int i, Node* child)
@@ -337,8 +355,6 @@ void deleteUserDataHelper(Node* node, int key) {
     }
 }
 
-
-
 int main() {
     BTree* btree = createBTree(MIN_DEGREE);
 
@@ -350,20 +366,38 @@ int main() {
 
     printf("B+ Tree contents before deletion:\n");
     display(btree->root);
-
     int idToDelete = 3;
-    deleteUserData(btree, idToDelete);
-    printf("\nDeleted user with ID: %d\n", idToDelete);
-
-    printf("B+ Tree contents after deletion:\n");
-    display(btree->root);
-
     UserData result;
     if (search(btree->root, idToDelete, &result)) {
         printf("\n\nUser found - ID: %d, Username: %s, Password: %s\n", result.id, result.username, result.password);
     } else {
         printf("\n\nUser with ID %d not found.\n", idToDelete);
     }
+
+    
+    deleteUserData(btree, idToDelete);
+    printf("\nDeleted user with ID: %d\n", idToDelete);
+
+    printf("B+ Tree contents after deletion:\n");
+    display(btree->root);
+
+    if (search(btree->root, idToDelete, &result)) {
+        printf("\n\nUser found - ID: %d, Username: %s, Password: %s\n", result.id, result.username, result.password);
+    } else {
+        printf("\n\nUser with ID %d not found.\n", idToDelete);
+    }
+
+    printf("Table before update\n");
+    display(btree->root);
+
+    int idToUpdate = 7;
+    char* username = "newUsername";
+    char* password = "newPassword";
+
+    update(btree->root, idToUpdate, &result, username, password);
+    printf("Table after update\n");
+    display(btree->root);
+
 
 
     return 0;
