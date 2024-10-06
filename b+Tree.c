@@ -1,4 +1,3 @@
-// C Program to Implement B+ Tree
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,24 +12,16 @@ typedef struct UserData {
 } UserData;
 
 typedef struct Node {
-    // Array of keys
     UserData* records;
-    // Minimum degree (defines the range for number of keys)
     int t;
-    // Array of child pointers
     struct Node** children;
-    // Current number of keys
     int n;
-    // To determine whether the node is leaf or not
     bool leaf;
-    // Pointer to next leaf node
     struct Node* next;
 } Node;
 
 typedef struct BTree {
-    // Pointer to root node
     Node* root;
-    // Minimum degree
     int t;
 } BTree;
 
@@ -42,7 +33,6 @@ UserData* createUser(int id, const char* username, const char* password) {
     return newUser;
 }
 
-// Function to create a new B+ tree node
 Node* createNode(int t, bool leaf)
 {
     Node* newNode = (Node*)malloc(sizeof(Node));
@@ -56,7 +46,6 @@ Node* createNode(int t, bool leaf)
     return newNode;
 }
 
-// Function to create a new B+ tree
 BTree* createBTree(int t)
 {
     BTree* btree = (BTree*)malloc(sizeof(BTree));
@@ -65,7 +54,6 @@ BTree* createBTree(int t)
     return btree;
 }
 
-// Function to display the B+ tree and print its keys
 void display(Node* node)
 {
     if (node == NULL)
@@ -75,14 +63,13 @@ void display(Node* node)
         if (!node->leaf) {
             display(node->children[i]);
         }
-        printf("[ID: %d, Username: %s, Password: %s] ", node->records[i].id, node->records[i].username, node->records[i].password);
+        printf("[ID: %d, Username: %s, Password: %s] \n", node->records[i].id, node->records[i].username, node->records[i].password);
     }
     if (!node->leaf) {
         display(node->children[i]);
     }
 }
 
-// Function to search a key in the B+ tree
 bool search(Node* node, int id, UserData* result)
 {
     int i = 0;
@@ -90,7 +77,7 @@ bool search(Node* node, int id, UserData* result)
         i++;
     }
     if (i < node->n && id == node->records[i].id) {
-        if (result != NULL) *result = node->records[i];  // If result pointer is provided, copy the found record
+        if (result != NULL) *result = node->records[i];
         return true;
     }
     if (node->leaf) {
@@ -99,7 +86,6 @@ bool search(Node* node, int id, UserData* result)
     return search(node->children[i], id, result);
 }
 
-// Function to split the child of a node during insertion
 void splitChild(Node* parent, int i, Node* child)
 {
     int t = child->t;
@@ -130,7 +116,6 @@ void splitChild(Node* parent, int i, Node* child)
     parent->n += 1;
 }
 
-// Function to insert a non-full node
 void insertNonFull(Node* node, UserData* row)
 {
     int i = node->n - 1;
@@ -158,7 +143,6 @@ void insertNonFull(Node* node, UserData* row)
     }
 }
 
-// Function to insert a key into the B+ tree
 void insert(BTree* btree, UserData* row)
 {
     Node* root = btree->root;
@@ -174,345 +158,213 @@ void insert(BTree* btree, UserData* row)
     }
 }
 
-// // Function prototypes for helper functions used in
-// // deleteKey
-// void deleteKeyHelper(Node* node, int key);
-// int findKey(Node* node, int key);
-// void removeFromLeaf(Node* node, int idx);
-// int getPredecessor(Node* node, int idx);
-// void fill(Node* node, int idx);
-// void borrowFromPrev(Node* node, int idx);
-// void borrowFromNext(Node* node, int idx);
-// void merge(Node* node, int idx);
+void deleteUserDataHelper(Node* node, int key);
+int findKey(Node* node, int key);
+void removeFromLeaf(Node* node, int idx);
+int getPredecessor(Node* node, int idx);
+void fill(Node* node, int idx);
+void borrowFromPrev(Node* node, int idx);
+void borrowFromNext(Node* node, int idx);
+void merge(Node* node, int idx);
 
-// // Function for deleting a key from the B+ tree
-// void deleteKey(BTree* btree, int key)
-// {
-//     Node* root = btree->root;
+int findKey(Node* node, int key)
+{
+    int idx = 0;
+    while (idx < node->n && key > node->records[idx].id) {
+        idx++;
+    }
+    return idx;
+}
 
-//     // Call a helper function to delete the key recursively
-//     deleteKeyHelper(root, key);
+void removeFromLeaf(Node* node, int idx)
+{
+    for (int i = idx + 1; i < node->n; ++i) {
+        node->records[i - 1] = node->records[i];
+    }
+    node->n--;
+}
 
-//     // If root has no keys left and it has a child, make its
-//     // first child the new root
-//     if (root->n == 0 && !root->leaf) {
-//         btree->root = root->children[0];
-//         free(root);
-//     }
-// }
 
-// // Helper function to recursively delete a key from the B+
-// // tree
-// void deleteKeyHelper(Node* node, int key)
-// {
-//     int idx = findKey(
-//         node, key); // Find the index of the key in the node
+int getPredecessor(Node* node, int idx) {
+    while (!node->leaf) {
+        node = node->children[idx + 1];
+    }
+    return node->records[node->n - 1].id;
+}
 
-//     // If key is present in this node
-//     if (idx < node->n && node->keys[idx] == key) {
-//         if (node->leaf) {
-//             // If the node is a leaf, simply remove the key
-//             removeFromLeaf(node, idx);
-//         }
-//         else {
-//             // If the node is not a leaf, replace the key
-//             // with its predecessor/successor
-//             int predecessor = getPredecessor(node, idx);
-//             node->keys[idx] = predecessor;
-//             // Recursively delete the predecessor
-//             deleteKeyHelper(node->children[idx],
-//                             predecessor);
-//         }
-//     }
-//     else {
-//         // If the key is not present in this node, go down
-//         // the appropriate child
-//         if (node->leaf) {
-//             // Key not found in the tree
-//             printf("Key %d not found in the B+ tree.\n",
-//                    key);
-//             return;
-//         }
+void fill(Node* node, int idx)
+{
+    if (idx != 0 && node->children[idx - 1]->n >= node->t) {
+        borrowFromPrev(node, idx);
+    }
+    else if (idx != node->n && node->children[idx + 1]->n >= node->t) {
+        borrowFromNext(node, idx);
+    }
+    else {
+        if (idx != node->n) {
+            merge(node, idx);
+        }
+        else {
+            merge(node, idx - 1);
+        }
+    }
+}
 
-//         bool isLastChild = (idx == node->n);
+void borrowFromPrev(Node* node, int idx)
+{
+    Node* child = node->children[idx];
+    Node* sibling = node->children[idx - 1];
 
-//         // If the child where the key is supposed to be lies
-//         // has less than t keys, fill that child
-//         if (node->children[idx]->n < node->t) {
-//             fill(node, idx);
-//         }
+    for (int i = child->n - 1; i >= 0; --i) {
+        child->records[i + 1] = child->records[i];
+    }
 
-//         // If the last child has been merged, it must have
-//         // merged with the previous child
+    if (!child->leaf) {
+        for (int i = child->n; i >= 0; --i) {
+            child->children[i + 1] = child->children[i];
+        }
+    }
 
-//         // So, we need to recursively delete the key from
-//         // the previous child
-//         if (isLastChild && idx > node->n) {
-//             deleteKeyHelper(node->children[idx - 1], key);
-//         }
-//         else {
-//             deleteKeyHelper(node->children[idx], key);
-//         }
-//     }
-// }
-// // Function to find the index of a key in a node
-// int findKey(Node* node, int key)
-// {
-//     int idx = 0;
-//     while (idx < node->n && key > node->keys[idx]) {
-//         idx++;
-//     }
-//     return idx;
-// }
+    child->records[0] = node->records[idx - 1];
 
-// // Function to remove a key from a leaf node
-// void removeFromLeaf(Node* node, int idx)
-// {
-//     for (int i = idx + 1; i < node->n; ++i) {
-//         node->keys[i - 1] = node->keys[i];
-//     }
-//     node->n--;
-// }
+    if (!child->leaf) {
+        child->children[0] = sibling->children[sibling->n];
+    }
 
-// // Function to get the predecessor of a key in a non-leaf
-// // node
-// int getPredecessor(Node* node, int idx)
-// {
-//     Node* curr = node->children[idx];
-//     while (!curr->leaf) {
-//         curr = curr->children[curr->n];
-//     }
-//     return curr->keys[curr->n - 1];
-// }
+    node->records[idx - 1] = sibling->records[sibling->n - 1];
 
-// // Function to fill up the child node present at the idx-th
-// // position in the node node
-// void fill(Node* node, int idx)
-// {
-//     if (idx != 0 && node->children[idx - 1]->n >= node->t) {
-//         borrowFromPrev(node, idx);
-//     }
-//     else if (idx != node->n
-//              && node->children[idx + 1]->n >= node->t) {
-//         borrowFromNext(node, idx);
-//     }
-//     else {
-//         if (idx != node->n) {
-//             merge(node, idx);
-//         }
-//         else {
-//             merge(node, idx - 1);
-//         }
-//     }
-// }
+    child->n += 1;
+    sibling->n -= 1;
+}
 
-// // Function to borrow a key from the previous child and move
-// // it to the idx-th child
-// void borrowFromPrev(Node* node, int idx)
-// {
-//     Node* child = node->children[idx];
-//     Node* sibling = node->children[idx - 1];
+void borrowFromNext(Node* node, int idx)
+{
+    Node* child = node->children[idx];
+    Node* sibling = node->children[idx + 1];
 
-//     // Move all keys in child one step ahead
-//     for (int i = child->n - 1; i >= 0; --i) {
-//         child->keys[i + 1] = child->keys[i];
-//     }
+    child->records[(child->n)] = node->records[idx];
 
-//     // If child is not a leaf, move its child pointers one
-//     // step ahead
-//     if (!child->leaf) {
-//         for (int i = child->n; i >= 0; --i) {
-//             child->children[i + 1] = child->children[i];
-//         }
-//     }
+    if (!child->leaf) {
+        child->children[(child->n) + 1]
+            = sibling->children[0];
+    }
 
-//     // Setting child's first key equal to node's key[idx -
-//     // 1]
-//     child->keys[0] = node->keys[idx - 1];
+    node->records[idx] = sibling->records[0];
 
-//     // Moving sibling's last child as child's first child
-//     if (!child->leaf) {
-//         child->children[0] = sibling->children[sibling->n];
-//     }
+    for (int i = 1; i < sibling->n; ++i) {
+        sibling->records[i - 1] = sibling->records[i];
+    }
 
-//     // Moving the key from the sibling to the parent
-//     node->keys[idx - 1] = sibling->keys[sibling->n - 1];
+    if (!sibling->leaf) {
+        for (int i = 1; i <= sibling->n; ++i) {
+            sibling->children[i - 1] = sibling->children[i];
+        }
+    }
 
-//     // Incrementing and decrementing the key counts of child
-//     // and sibling respectively
-//     child->n += 1;
-//     sibling->n -= 1;
-// }
+    child->n += 1;
+    sibling->n -= 1;
+}
 
-// // Function to borrow a key from the next child and move it
-// // to the idx-th child
-// void borrowFromNext(Node* node, int idx)
-// {
-//     Node* child = node->children[idx];
-//     Node* sibling = node->children[idx + 1];
+void merge(Node* node, int idx)
+{
+    Node* child = node->children[idx];
+    Node* sibling = node->children[idx + 1];
 
-//     // Setting child's (t - 1)th key equal to node's
-//     // key[idx]
-//     child->keys[(child->n)] = node->keys[idx];
+    child->records[child->n] = node->records[idx];
 
-//     // If child is not a leaf, move its child pointers one
-//     // step ahead
-//     if (!child->leaf) {
-//         child->children[(child->n) + 1]
-//             = sibling->children[0];
-//     }
+    if (!child->leaf) {
+        child->children[child->n + 1]
+            = sibling->children[0];
+    }
 
-//     // Setting node's idx-th key equal to sibling's first
-//     // key
-//     node->keys[idx] = sibling->keys[0];
+    for (int i = 0; i < sibling->n; ++i) {
+        child->records[i + child->n + 1] = sibling->records[i];
+    }
 
-//     // Moving all keys in sibling one step behind
-//     for (int i = 1; i < sibling->n; ++i) {
-//         sibling->keys[i - 1] = sibling->keys[i];
-//     }
+    if (!child->leaf) {
+        for (int i = 0; i <= sibling->n; ++i) {
+            child->children[i + child->n + 1]
+                = sibling->children[i];
+        }
+    }
 
-//     // If sibling is not a leaf, move its child pointers one
-//     // step behind
-//     if (!sibling->leaf) {
-//         for (int i = 1; i <= sibling->n; ++i) {
-//             sibling->children[i - 1] = sibling->children[i];
-//         }
-//     }
+    for (int i = idx + 1; i < node->n; ++i) {
+        node->records[i - 1] = node->records[i];
+    }
 
-//     // Incrementing and decrementing the key counts of child
-//     // and sibling respectively
-//     child->n += 1;
-//     sibling->n -= 1;
-// }
+    for (int i = idx + 2; i <= node->n; ++i) {
+        node->children[i - 1] = node->children[i];
+    }
 
-// // Function to merge idx-th child of node with (idx + 1)-th
-// // child of node
-// void merge(Node* node, int idx)
-// {
-//     Node* child = node->children[idx];
-//     Node* sibling = node->children[idx + 1];
+    child->n += sibling->n + 1;
+    node->n--;
 
-//     // Pulling a key from the current node and inserting it
-//     // into (t-1)th position of child
-//     child->keys[child->n] = node->keys[idx];
+   
+    free(sibling);
+}
 
-//     // If child is not a leaf, move its child pointers one
-//     // step ahead
-//     if (!child->leaf) {
-//         child->children[child->n + 1]
-//             = sibling->children[0];
-//     }
+void deleteUserData(BTree* btree, int key) {
+    deleteUserDataHelper(btree->root, key);
+}
 
-//     // Copying the keys from sibling to child
-//     for (int i = 0; i < sibling->n; ++i) {
-//         child->keys[i + child->n + 1] = sibling->keys[i];
-//     }
+void deleteUserDataHelper(Node* node, int key) {
+    int idx = findKey(node, key);
 
-//     // If child is not a leaf, copy the children pointers as
-//     // well
-//     if (!child->leaf) {
-//         for (int i = 0; i <= sibling->n; ++i) {
-//             child->children[i + child->n + 1]
-//                 = sibling->children[i];
-//         }
-//     }
+    if (idx < node->n && node->records[idx].id == key) {
+        if (node->leaf) {
+            removeFromLeaf(node, idx);
+        } else {
+            int pred = getPredecessor(node, idx);
+            node->records[idx].id = pred;  
+            deleteUserDataHelper(node->children[idx], pred);  
+        }
+    } else {
+        if (node->leaf) {
+            printf("Key %d not found in the tree.\n", key);
+            return;
+        }
 
-//     // Move all keys after idx in the current node one step
-//     // before, so as to fill the gap created by moving
-//     // keys[idx] to child
-//     for (int i = idx + 1; i < node->n; ++i) {
-//         node->keys[i - 1] = node->keys[i];
-//     }
+        bool isLastChild = (idx == node->n);
+        if (node->children[idx]->n < node->t) {
+            fill(node, idx);
+        }
 
-//     // Move the child pointers after (idx + 1) in the
-//     // current node one step before
-//     for (int i = idx + 2; i <= node->n; ++i) {
-//         node->children[i - 1] = node->children[i];
-//     }
+        if (isLastChild && idx > node->n) {
+            deleteUserDataHelper(node->children[idx - 1], key);
+        } else {
+            deleteUserDataHelper(node->children[idx], key);
+        }
+    }
+}
 
-//     // Update the key count of child and current node
-//     child->n += sibling->n + 1;
-//     node->n--;
-
-//     // Free the memory occupied by sibling
-//     free(sibling);
-// }
-
-// int main()
-// {
-//     BTree* btree = createBTree(MIN_DEGREE);
-
-//     // Insert elements into the B+ tree
-//     insert(btree, 2);
-//     insert(btree, 4);
-//     insert(btree, 7);
-//     insert(btree, 10);
-//     insert(btree, 17);
-//     insert(btree, 21);
-//     insert(btree, 28);
-
-//     // Print the B+ tree
-//     printf("B+ Tree after insertion: ");
-//     display(btree->root);
-//     printf("\n");
-
-//     // Search for a key
-//     int key_to_search = 17;
-//     bool found = search(btree->root, key_to_search);
-
-//     if (found) {
-//         printf("Key %d found in the B+ tree.\n",
-//                key_to_search);
-//     }
-//     else {
-//         printf("Key %d not found in the B+ tree.\n",
-//                key_to_search);
-//     }
-
-//     // Delete element from the B+ tree
-//     deleteKey(btree, 17);
-
-//     // Print the B+ tree after deletion
-//     printf("B+ Tree after deletion: ");
-//     display(btree->root);
-//     printf("\n");
-
-//     found = search(btree->root, key_to_search);
-
-//     if (found) {
-//         printf("Key %d found in the B+ tree.\n",
-//                key_to_search);
-//     }
-//     else {
-//         printf("Key %d not found in the B+ tree.\n",
-//                key_to_search);
-//     }
-
-//     return 0;
-// }
 
 
 int main() {
     BTree* btree = createBTree(MIN_DEGREE);
 
-    // Sample users
     insert(btree, createUser(1, "alice", "password1"));
     insert(btree, createUser(3, "bob", "password2"));
     insert(btree, createUser(7, "charlie", "password3"));
     insert(btree, createUser(10, "david", "password4"));
     insert(btree, createUser(5, "eve", "password5"));
 
-    printf("B+ Tree contents:\n");
+    printf("B+ Tree contents before deletion:\n");
     display(btree->root);
-    
-    // Searching for a record
+
+    int idToDelete = 3;
+    deleteUserData(btree, idToDelete);
+    printf("\nDeleted user with ID: %d\n", idToDelete);
+
+    printf("B+ Tree contents after deletion:\n");
+    display(btree->root);
+
     UserData result;
-    int idToSearch = 3;
-    if (search(btree->root, idToSearch, &result)) {
+    if (search(btree->root, idToDelete, &result)) {
         printf("\n\nUser found - ID: %d, Username: %s, Password: %s\n", result.id, result.username, result.password);
     } else {
-        printf("\n\nUser with ID %d not found.\n", idToSearch);
+        printf("\n\nUser with ID %d not found.\n", idToDelete);
     }
+
 
     return 0;
 }
