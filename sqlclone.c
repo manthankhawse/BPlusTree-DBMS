@@ -460,7 +460,7 @@ BTree* loadBTreeFromFile(const char* filename, int t) {
         fclose(file);
         return btree;
     } else {
-        printf("Error opening file for reading or file not found. Creating a new tree.\n");
+        printf("Creating a new table\n");
         return createBTree(t);
     }
 }
@@ -580,11 +580,11 @@ void execute(statement* s, BTree** btree){
             break;
         case FIND:
             userFound = search((*btree)->root, s->row_to_insert.id, &result);
-            printf("%d %s %s", result.id, result.username, result.password);
+            // printf("%d %s %s", result.id, result.username, result.password);
             break;
         case UPDATE:
             userFound = update((*btree)->root, s->row_to_insert.id, &result, s->row_to_insert.username, s->row_to_insert.password);
-            printf("%d %s %s", result.id, result.username, result.password);
+            // printf("%d %s %s", result.id, result.username, result.password);
             break;
         case SELECT:
             display((*btree)->root);
@@ -681,9 +681,21 @@ void print_schema() {
 }
 
 
-int main() {
+int main(int argc, char* argv[]) {
+    if (argc < 2) {
+        printf("Must supply a database filename.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    char* filename = argv[1];
     char input[100];
-    BTree* btree = createBTree(MIN_DEGREE);
+    
+    // Load the tree from the file (or create a new one if the file doesn't exist)
+    BTree* btree = loadBTreeFromFile(filename, MIN_DEGREE);
+    // BTree* btree = createBTree(MIN_DEGREE);
+    if(btree==NULL){
+        btree = (BTree*)malloc(sizeof(BTree));
+    }
     while (true) {
         print_prompt();
         fgets(input, sizeof(input), stdin);
@@ -699,6 +711,7 @@ int main() {
                     print_schema();
                     break;
                 case EXIT:
+                    saveBTreeToFile(btree, filename);
                     exit(EXIT_SUCCESS);
                     break;
                 case OPENDB:
