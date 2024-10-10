@@ -99,7 +99,7 @@ void display(Node* node)
         if (!node->leaf) {
             display(node->children[i]);
         }
-        printf("[ID: %d, Username: %s, Password: %s] \n", node->records[i].id, node->records[i].username, node->records[i].password);
+        printf("| %-10d | %-20s | %-20s |\n", node->records[i].id, node->records[i].username, node->records[i].password);
     }
     if (!node->leaf) {
         display(node->children[i]);
@@ -484,10 +484,6 @@ tokens* tokenize(char* input){
     return token;
 }
 
-void print_tokens(tokens* token){
-    printf("tokens\n%s %d %s %s\n", token->type, token->id, token->username, token->password);
-}
-
 parse_res parse(tokens* token, statement** s){
     char* type = token->type;
     if(strcmp(type, "insert")==0){
@@ -579,14 +575,15 @@ void execute(statement* s, BTree** btree){
             insert(*btree, &(s->row_to_insert));
             break;
         case FIND:
+            printf("| %-10s | %-20s | %-20s |\n\n", "id", "username", "password");
             userFound = search((*btree)->root, s->row_to_insert.id, &result);
-            // printf("%d %s %s", result.id, result.username, result.password);
+            printf("| %-10d | %-20s | %-20s |\n", result.id, result.username, result.password);
             break;
         case UPDATE:
             userFound = update((*btree)->root, s->row_to_insert.id, &result, s->row_to_insert.username, s->row_to_insert.password);
-            // printf("%d %s %s", result.id, result.username, result.password);
             break;
         case SELECT:
+            printf("| %-10s | %-20s | %-20s |\n\n", "id", "username", "password");
             display((*btree)->root);
             break;
         case DELETE:
@@ -606,11 +603,11 @@ meta_command_type findMetaType(char* input){
         return EXIT;
     }else if(strcmp(input, ".help")==0){
         return HELP;
-    }else if(strcmp(input, ".save")==0){
-        return SAVE;
     }else if(strcmp(input, ".schema")==0){
         return SCHEMA;
-    }else if(strcmp(input, ".opendb")==0){
+    }else if(strncmp(input, ".save ", strlen(".save ")) == 0){
+        return SAVE;
+    }else if(strncmp(input, ".opendb ", strlen(".opendb ")) == 0){
         return OPENDB;
     }
 
@@ -715,10 +712,23 @@ int main(int argc, char* argv[]) {
                     exit(EXIT_SUCCESS);
                     break;
                 case OPENDB:
-                    printf("Todo\n");
+                    printf("Switching table\n");
+                    saveBTreeToFile(btree, filename);
+                    char* loadFile = strtok(input, " ");
+                    loadFile = strtok(NULL, " ");
+                    btree = loadBTreeFromFile(loadFile, MIN_DEGREE);
+                    if(btree==NULL){
+                        btree = (BTree*)malloc(sizeof(BTree));
+                    }
+
+                    strcpy(filename, loadFile);
                     break;
                 case SAVE:
-                    printf("Todo\n");
+                    printf("Saving file\n");
+                    char* saveFile = strtok(input, " ");
+                    saveFile = strtok(NULL, " ");
+                    printf("Saving database to file %s\n", saveFile);
+                    saveBTreeToFile(btree, saveFile);
                     break;
                 case UNRECOGNIZED_META:
                     printf("Unrecognized Meta command\n");
