@@ -181,6 +181,7 @@ typedef enum{
     PARSE_SUCCESSFUL,
     NEGATIVE_ID_ERROR,
     INVALID_INPUT,
+    DUPLICATE_ID_ERROR,
     UNRECOGNIZED,
 }parse_res;
 
@@ -627,6 +628,9 @@ parse_res parse(tokens* token, statement** s){
     char* type = token->type;
     if(strcmp(type, "insert")==0){
         (*s)->type = INSERT;
+        if(contains(hashSet, token->id)){
+            return DUPLICATE_ID_ERROR;
+        }
         if(token->id < 0){
             // error
             return NEGATIVE_ID_ERROR;
@@ -891,6 +895,9 @@ int main(int argc, char* argv[]) {
                 break;
             case NEGATIVE_ID_ERROR:
                 printf("Input ID cannot be negative\n");
+                break;
+            case DUPLICATE_ID_ERROR:
+                printf("Entered ID already exists\nDuplicate IDs not allowed\n");
                 break;
             case UNRECOGNIZED:
                 printf("Unrecognized query\n");
