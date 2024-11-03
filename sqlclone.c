@@ -4,6 +4,142 @@
 #include <stdlib.h>
 #define MIN_DEGREE 3 
 
+
+#define INITIAL_SIZE 16
+#define LOAD_FACTOR 0.75
+
+typedef struct TableNode {
+    int key;
+    struct TableNode* next;
+} TableNode;
+
+typedef struct {
+    TableNode** table;
+    int capacity;
+    int size;
+} HashSet;
+
+// Hash function
+int hash(int key, int capacity) {
+    return key % capacity;
+}
+
+// Create a new hash set
+HashSet* createHashSet() {
+    HashSet* hashSet = (HashSet*)malloc(sizeof(HashSet));
+    hashSet->capacity = INITIAL_SIZE;
+    hashSet->size = 0;
+    hashSet->table = (TableNode**)malloc(hashSet->capacity * sizeof(TableNode*));
+    for (int i = 0; i < hashSet->capacity; i++) {
+        hashSet->table[i] = NULL;
+    }
+    return hashSet;
+}
+
+// Resize the hash table
+void resize(HashSet* hashSet) {
+    int newCapacity = hashSet->capacity * 2;
+    TableNode** newTable = (TableNode**)malloc(newCapacity * sizeof(TableNode*));
+    for (int i = 0; i < newCapacity; i++) {
+        newTable[i] = NULL;
+    }
+    
+    // Rehash all existing keys
+    for (int i = 0; i < hashSet->capacity; i++) {
+        TableNode* current = hashSet->table[i];
+        while (current != NULL) {
+            int newIndex = hash(current->key, newCapacity);
+            TableNode* newNode = (TableNode*)malloc(sizeof(TableNode));
+            newNode->key = current->key;
+            newNode->next = newTable[newIndex];
+            newTable[newIndex] = newNode;
+            current = current->next;
+        }
+    }
+    
+    // Free old table and update the hash set
+    for (int i = 0; i < hashSet->capacity; i++) {
+        TableNode* current = hashSet->table[i];
+        while (current != NULL) {
+            TableNode* temp = current;
+            current = current->next;
+            free(temp);
+        }
+    }
+    free(hashSet->table);
+    hashSet->table = newTable;
+    hashSet->capacity = newCapacity;
+}
+
+// Insert a key into the hash set
+void insertTable(HashSet* hashSet, int key) {
+    if (hashSet->size >= hashSet->capacity * LOAD_FACTOR) {
+        resize(hashSet);
+    }
+
+    int index = hash(key, hashSet->capacity);
+    TableNode* current = hashSet->table[index];
+    while (current != NULL) {
+        if (current->key == key) return; // Key already exists
+        current = current->next;
+    }
+
+    // Insert new key at the beginning of the list
+    TableNode* newNode = (TableNode*)malloc(sizeof(TableNode));
+    newNode->key = key;
+    newNode->next = hashSet->table[index];
+    hashSet->table[index] = newNode;
+    hashSet->size++;
+}
+
+// Remove a key from the hash set
+void removeKey(HashSet* hashSet, int key) {
+    int index = hash(key, hashSet->capacity);
+    TableNode* current = hashSet->table[index];
+    TableNode* prev = NULL;
+    while (current != NULL) {
+        if (current->key == key) {
+            if (prev == NULL) {
+                hashSet->table[index] = current->next;
+            } else {
+                prev->next = current->next;
+            }
+            free(current);
+            hashSet->size--;
+            return;
+        }
+        prev = current;
+        current = current->next;
+    }
+}
+
+// Check if a key exists in the hash set
+bool contains(HashSet* hashSet, int key) {
+    int index = hash(key, hashSet->capacity);
+    TableNode* current = hashSet->table[index];
+    while (current != NULL) {
+        if (current->key == key) return true;
+        current = current->next;
+    }
+    return false;
+}
+
+// Free the hash set
+void freeHashSet(HashSet* hashSet) {
+    for (int i = 0; i < hashSet->capacity; i++) {
+        TableNode* current = hashSet->table[i];
+        while (current != NULL) {
+            TableNode* temp = current;
+            current = current->next;
+            free(temp);
+        }
+    }
+    free(hashSet->table);
+    free(hashSet);
+}
+
+HashSet* hashSet = NULL;
+
 typedef struct UserData {
     int id;
     char username[100];
@@ -199,6 +335,7 @@ void insertNonFull(Node* node, UserData* row)
 
 void insert(BTree* btree, UserData* row)
 {
+    insertTable(hashSet, row->id);
     Node* root = btree->root;
     if (root->n == 2 * btree->t - 1) {
         Node* newRoot = createNode(btree->t, false);
@@ -366,6 +503,7 @@ void deleteUserDataHelper(Node* node, int key) {
 
     if (idx < node->n && node->records[idx].id == key) {
         if (node->leaf) {
+            removeKey(hashSet, idx);
             removeFromLeaf(node, idx);
         } else {
             int pred = getPredecessor(node, idx);
@@ -428,6 +566,7 @@ Node* readTreeFromFile(FILE* file, int t) {
     // Read user data records
     for (int i = 0; i < n; i++) {
         fread(&node->records[i], sizeof(UserData), 1, file);
+        insertTable(hashSet, node->records[i].id);
     }
 
     // Read child nodes recursively
@@ -686,7 +825,7 @@ int main(int argc, char* argv[]) {
 
     char* filename = argv[1];
     char input[100];
-    
+    hashSet = createHashSet();
     // Load the tree from the file (or create a new one if the file doesn't exist)
     BTree* btree = loadBTreeFromFile(filename, MIN_DEGREE);
     // BTree* btree = createBTree(MIN_DEGREE);
@@ -709,9 +848,11 @@ int main(int argc, char* argv[]) {
                     break;
                 case EXIT:
                     saveBTreeToFile(btree, filename);
+                    freeHashSet(hashSet);
                     exit(EXIT_SUCCESS);
                     break;
                 case OPENDB:
+                    hashSet = createHashSet();
                     printf("Switching table\n");
                     saveBTreeToFile(btree, filename);
                     char* loadFile = strtok(input, " ");
@@ -759,6 +900,8 @@ int main(int argc, char* argv[]) {
         free(tokenizedStatement);
         free(s);
     }
+
+    
   
     return 0;
 }
