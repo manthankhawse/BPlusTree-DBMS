@@ -2,11 +2,13 @@
 #include <string.h>
 #include <stdbool.h>
 #include <stdlib.h>
-#define MIN_DEGREE 3 
+// #define MIN_DEGREE 3 
 
 
 #define INITIAL_SIZE 16
 #define LOAD_FACTOR 0.75
+
+int MIN_DEGREE;
 
 typedef struct TableNode {
     int key;
@@ -826,6 +828,10 @@ int main(int argc, char* argv[]) {
         printf("Must supply a database filename.\n");
         exit(EXIT_FAILURE);
     }
+
+    printf("\nEnter the desired degree of the B-tree\n");
+    scanf("%d", &MIN_DEGREE);
+    while (getchar() != '\n');
 
     char* filename = argv[1];
     char input[100];
